@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KEEPON DM Manager</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<style>
+  :root {
+    --green: #5a7a42;
+    --green-light: #e8f0e0;
+    --green-bg: #f0f4ec;
+    --gold: #b8963e;
+    --text: #333;
+    --text-light: #666;
+    --bg: #fafaf7;
+    --white: #fff;
+    --border: #ddd;
+    --radius: 8px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Noto Sans JP', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* ── Header ── */
+  .header { background: var(--green); color: var(--white); padding: 16px 32px; display: flex; align-items: center; gap: 16px; }
+  .header h1 { font-size: 18px; font-weight: 500; letter-spacing: 0.05em; }
+  .header .sub { font-size: 12px; opacity: 0.7; }
+
+  /* ── Tabs ── */
+  .tabs { display: flex; background: var(--white); border-bottom: 2px solid var(--border); padding: 0 32px; }
+  .tab { padding: 14px 28px; cursor: pointer; font-size: 14px; font-weight: 500; color: var(--text-light); border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+  .tab:hover { color: var(--green); }
+  .tab.active { color: var(--green); border-bottom-color: var(--green); }
+
+  /* ── Layout ── */
+  .container { max-width: 1200px; margin: 0 auto; padding: 24px 32px; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* ── Card ── */
+  .card { background: var(--white); border-radius: var(--radius); border: 1px solid var(--border); padding: 24px; margin-bottom: 20px; }
+  .card-title { font-size: 14px; font-weight: 700; color: var(--green); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .card-title::before { content: ''; display: block; width: 4px; height: 16px; background: var(--green); border-radius: 2px; }
+
+  /* ── Form ── */
+  label { font-size: 13px; font-weight: 500; color: var(--text); display: block; margin-bottom: 4px; }
+  input[type="text"], textarea, select {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px;
+    font-family: inherit; font-size: 14px; transition: border 0.2s;
+  }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: var(--green); }
+  textarea { resize: vertical; min-height: 100px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 12px; }
+  .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 12px; }
+  .form-group { margin-bottom: 12px; }
+
+  /* ── Buttons ── */
+  .btn { padding: 10px 24px; border-radius: 6px; border: none; font-family: inherit; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+  .btn-primary { background: var(--green); color: var(--white); }
+  .btn-primary:hover { background: #4a6a35; }
+  .btn-secondary { background: var(--green-light); color: var(--green); }
+  .btn-secondary:hover { background: #d8e8cc; }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-light); }
+  .btn-outline:hover { border-color: var(--green); color: var(--green); }
+  .btn-gold { background: var(--gold); color: var(--white); }
+  .btn-gold:hover { background: #a6842f; }
+  .btn-sm { padding: 6px 14px; font-size: 13px; }
+  .action-bar { display: flex; gap: 12px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
+
+  /* ── Drop Zone ── */
+  .dropzone {
+    border: 2px dashed var(--border); border-radius: var(--radius); padding: 40px; text-align: center;
+    color: var(--text-light); cursor: pointer; transition: all 0.2s;
+  }
+  .dropzone:hover, .dropzone.dragover { border-color: var(--green); background: var(--green-light); }
+  .dropzone .icon { font-size: 36px; margin-bottom: 8px; }
+  .dropzone p { font-size: 14px; }
+  .dropzone .hint { font-size: 12px; color: #999; margin-top: 4px; }
+
+  /* ── Table ── */
+  .table-wrap { overflow-x: auto; margin-top: 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: var(--green-bg); color: var(--green); font-weight: 500; text-align: left; padding: 10px 12px; position: sticky; top: 0; }
+  td { padding: 10px 12px; border-bottom: 1px solid #eee; }
+  tr:hover td { background: #fafaf5; }
+  .cb { width: 18px; height: 18px; accent-color: var(--green); cursor: pointer; }
+
+  /* ── Toggle ── */
+  .toggle-group { display: flex; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); width: fit-content; }
+  .toggle-btn { padding: 8px 20px; font-size: 13px; cursor: pointer; background: var(--white); border: none; font-family: inherit; transition: all 0.2s; }
+  .toggle-btn.active { background: var(--green); color: var(--white); }
+
+  /* ── Counter ── */
+  .counter { font-size: 13px; color: var(--text-light); padding: 8px 0; }
+  .counter strong { color: var(--green); }
+
+  /* ── Preview ── */
+  .preview-frame { background: #f5f5f5; border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; min-height: 200px; }
+  .preview-label { display: inline-block; border: 1px solid #ccc; padding: 12px 16px; margin: 4px; font-size: 11px; line-height: 1.6; width: 240px; height: 170px; vertical-align: top; position: relative; background: #fff; }
+  .preview-label .postal { color: var(--text-light); font-size: 10px; }
+  .preview-label .addr { font-size: 11px; }
+  .preview-label .name { font-size: 13px; font-weight: 700; margin-top: 8px; }
+  .preview-label .sender-sm { font-size: 8px; color: #999; position: absolute; bottom: 6px; right: 8px; text-align: right; line-height: 1.4; }
+
+  /* ── Sender settings (collapsible) ── */
+  .settings-toggle { cursor: pointer; user-select: none; }
+  .settings-body { overflow: hidden; transition: max-height 0.3s; }
+
+  /* ── Misc ── */
+  .note { font-size: 12px; color: var(--text-light); margin-top: 4px; }
+  .divider { height: 1px; background: var(--border); margin: 16px 0; }
+  .flex-between { display: flex; justify-content: space-between; align-items: center; }
+  .badge { display: inline-block; padding: 2px 8px; background: var(--green-light); color: var(--green); border-radius: 4px; font-size: 11px; font-weight: 500; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- ═══════ HEADER ═══════ -->
+<div class="header">
+  <h1>KEEPON DM Manager</h1>
+  <span class="sub">宛名ラベル ＆ 送付状 PDF生成</span>
+</div>
+
+<!-- ═══════ TABS ═══════ -->
+<div class="tabs">
+  <div class="tab active" data-tab="labels">① 宛名ラベル</div>
+  <div class="tab" data-tab="letters">② 送付状</div>
+  <div class="tab" data-tab="sender">差出人設定</div>
+</div>
+
+<div class="container">
+
+<!-- ═══════════════════════════════════ -->
+<!-- TAB 1: 宛名ラベル                    -->
+<!-- ═══════════════════════════════════ -->
+<div class="tab-content active" id="tab-labels">
+
+  <!-- CSV Upload -->
+  <div class="card">
+    <div class="card-title">CSVファイル読み込み</div>
+    <div class="dropzone" id="dropzone">
+      <div class="icon">📄</div>
+      <p>CSVファイルをドラッグ＆ドロップ、またはクリックして選択</p>
+      <p class="hint">形式：団体名, 郵便番号, 住所（ヘッダー行あり）</p>
+    </div>
+    <input type="file" id="csv-input" accept=".csv" class="hidden">
+  </div>
+
+  <!-- Data Table -->
+  <div class="card" id="data-card" style="display:none;">
+    <div class="flex-between">
+      <div class="card-title" style="margin-bottom:0;">送付先リスト</div>
+      <div class="counter"><strong id="selected-count">0</strong> / <span id="total-count">0</span> 件選択</div>
+    </div>
+    <div style="margin-top:12px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+      <button class="btn btn-sm btn-secondary" onclick="selectAll()">全選択</button>
+      <button class="btn btn-sm btn-outline" onclick="deselectAll()">全解除</button>
+      <input type="text" id="search-input" placeholder="検索..." style="width:200px; padding:6px 10px; font-size:13px;">
+    </div>
+    <div class="table-wrap" style="max-height: 400px; overflow-y: auto; margin-top: 12px;">
+      <table>
+        <thead><tr><th style="width:40px"><input type="checkbox" class="cb" id="cb-all"></th><th style="width:40px">#</th><th>団体名</th><th>〒</th><th>住所</th></tr></thead>
+        <tbody id="data-tbody"></tbody>
+      </table>
+    </div>
+    <div class="action-bar">
+      <button class="btn btn-primary" onclick="printLabels()">🏷️ 宛名ラベル PDF出力</button>
+      <p class="note">※ 印刷ダイアログで「PDFに保存」を選択してください。用紙サイズ：A4 / 余白：なし</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<!-- TAB 2: 送付状                        -->
+<!-- ═══════════════════════════════════ -->
+<div class="tab-content" id="tab-letters">
+
+  <div class="card">
+    <div class="card-title">送付物の設定</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>送付物の名前（チラシ名・カタログ名）</label>
+        <input type="text" id="item-name" placeholder="例：オリジナルグッズカタログ" value="オリジナルグッズカタログ">
+      </div>
+      <div class="form-group">
+        <label>送付状タイトル</label>
+        <input type="text" id="letter-title" placeholder="自動生成されます" readonly style="background:#f5f5f5;">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">テンプレート本文</div>
+    <div class="form-group">
+      <label>お客様タイプ</label>
+      <div class="toggle-group" style="margin-top:4px;">
+        <button class="toggle-btn active" data-type="repeater" onclick="setCustomerType('repeater')">リピーター</button>
+        <button class="toggle-btn" data-type="new" onclick="setCustomerType('new')">新規</button>
+      </div>
+    </div>
+    <div class="form-group" style="margin-top:12px;">
+      <label>挨拶文</label>
+      <input type="text" id="greeting-text" value="いつもキープオンショップをご利用いただき、ありがとうございます！">
+      <p class="note">※ この後に「〇〇に、〇〇を送付させていただきます。」が自動で続きます</p>
+    </div>
+    <div class="divider"></div>
+    <div class="form-group">
+      <label>自由入力（挨拶文の下に表示されます）</label>
+      <textarea id="free-text" rows="6" placeholder="ここに自由にテキストを入力できます...">名入れやオリジナル加工ができる商品が大幅に増えました！
+
+卒園・卒業、イベント行事、記念品.....
+
+大切なライフイベントを、世界にひとつだけのオリジナルアイテムで彩りませんか？
+「こんなこともできるのかな？」と思ったら、ぜひお気軽にご相談ください。
+発送日のご指定や、配送先の個別対応、細やかなカスタマイズにも対応いたします。</textarea>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">QRコード設定</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>LINE URL（左側QR）</label>
+        <input type="text" id="qr-line-url" placeholder="https://line.me/..." value="https://lin.ee/example">
+        <p class="note">LINEのQRコード下に表示するテキスト</p>
+        <input type="text" id="qr-line-text" value="LINEにスムーズにご相談いただけますので、ぜひご活用ください！" style="margin-top:4px;">
+      </div>
+      <div class="form-group">
+        <label>ショップ URL（右側QR）</label>
+        <input type="text" id="qr-shop-url" placeholder="https://keepon.shop/..." value="https://keeponshop.com">
+        <p class="note">QRコードの横に表示するラベル</p>
+        <input type="text" id="qr-shop-label" value="キープオンショップ" style="margin-top:4px;">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>注釈（QRコードの間に表示）</label>
+      <input type="text" id="letter-note" value="なお、カタログに掲載の価格は販売価格とは異なる場合がございます。価格の確認やご注文は、下記QRコードからキープオンショップにてご確認ください。">
+    </div>
+  </div>
+
+  <!-- 宛先選択 -->
+  <div class="card">
+    <div class="card-title">宛先の選択</div>
+    <div id="letter-no-data" style="color:#999; font-size:14px;">
+      ※ 「①宛名ラベル」タブでCSVを読み込むと、ここに宛先リストが表示されます。<br>
+      または下の「手入力で追加」から個別に入力できます。
+    </div>
+    <div id="letter-data" style="display:none;">
+      <div style="margin-bottom:12px; display:flex; gap:8px; align-items:center;">
+        <button class="btn btn-sm btn-secondary" onclick="selectAllLetters()">全選択</button>
+        <button class="btn btn-sm btn-outline" onclick="deselectAllLetters()">全解除</button>
+        <span class="counter" style="padding:0;">選択中: <strong id="letter-selected-count">0</strong>件</span>
+      </div>
+      <div class="table-wrap" style="max-height:300px; overflow-y:auto;">
+        <table>
+          <thead><tr><th style="width:40px"><input type="checkbox" class="cb" id="cb-all-letters"></th><th>団体名</th><th>〒</th><th>住所</th></tr></thead>
+          <tbody id="letter-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="card-title" style="font-size:13px;">手入力で追加</div>
+    <div class="form-row-3">
+      <div class="form-group"><label>団体名</label><input type="text" id="manual-name" placeholder="〇〇株式会社"></div>
+      <div class="form-group"><label>郵便番号</label><input type="text" id="manual-postal" placeholder="000-0000"></div>
+      <div class="form-group"><label>住所</label><input type="text" id="manual-addr" placeholder="大阪府..."></div>
+    </div>
+    <button class="btn btn-sm btn-secondary" onclick="addManualEntry()">＋ この宛先を追加</button>
+  </div>
+
+  <div class="card">
+    <div class="action-bar" style="margin-top:0;">
+      <button class="btn btn-gold" onclick="printLetters()">📨 送付状 PDF出力</button>
+      <p class="note">※ 選択した宛先ごとに1ページの送付状を生成します。印刷ダイアログで「PDFに保存」を選択してください。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ -->
+<!-- TAB 3: 差出人設定                    -->
+<!-- ═══════════════════════════════════ -->
+<div class="tab-content" id="tab-sender">
+  <div class="card">
+    <div class="card-title">差出人情報</div>
+    <p class="note" style="margin-bottom:16px;">宛名ラベル・送付状の両方に使用されます。変更は自動保存されます。</p>
+    <div class="form-row">
+      <div class="form-group"><label>会社名</label><input type="text" id="sender-company" value="キープオン株式会社" onchange="saveSender()"></div>
+      <div class="form-group"><label>ショップ名</label><input type="text" id="sender-shop" value="キープオンショップ" onchange="saveSender()"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>郵便番号</label><input type="text" id="sender-postal" value="581-0075" onchange="saveSender()"></div>
+      <div class="form-group"><label>住所</label><input type="text" id="sender-addr" value="大阪府八尾市渋川町5-5-33" onchange="saveSender()"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>電話番号</label><input type="text" id="sender-tel" value="072-928-6552" onchange="saveSender()"></div>
+      <div class="form-group"><label>担当者名</label><input type="text" id="sender-person" value="川原" onchange="saveSender()"></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<script>
+// ═══════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════
+let csvData = [];       // [{name, postal, address, selected}]
+let manualEntries = []; // 手入力の追加エントリ
+let customerType = 'repeater';
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  loadSender();
+  setupTabs();
+  setupDropzone();
+  setupSearch();
+  setupItemNameSync();
+  setupCbAll();
+});
+
+// ── Tabs ──
+function setupTabs() {
+  document.querySelectorAll('.tab').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      document.getElementById('tab-' + t.dataset.tab).classList.add('active');
+      // Re-render tables on tab switch to sync checkbox state
+      if (t.dataset.tab === 'labels' && csvData.length) renderTable(document.getElementById('search-input').value);
+      if (t.dataset.tab === 'letters') renderLetterTable();
+    });
+  });
+}
+
+// ── Item name → title sync ──
+function setupItemNameSync() {
+  const inp = document.getElementById('item-name');
+  const out = document.getElementById('letter-title');
+  const sync = () => { out.value = (inp.value || '○○') + '送付のお知らせ'; };
+  inp.addEventListener('input', sync);
+  sync();
+}
+
+// ═══════════════════════════════════════
+// CSV UPLOAD
+// ═══════════════════════════════════════
+function setupDropzone() {
+  const dz = document.getElementById('dropzone');
+  const fi = document.getElementById('csv-input');
+
+  dz.addEventListener('click', () => fi.click());
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('dragover');
+    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+  });
+  fi.addEventListener('change', e => { if (e.target.files.length) handleFile(e.target.files[0]); });
+}
+
+function handleFile(file) {
+  Papa.parse(file, {
+    header: true,
+    skipEmptyLines: true,
+    complete: (results) => {
+      csvData = results.data.map((row, i) => {
+        const keys = Object.keys(row);
+        return {
+          id: i,
+          name: (row[keys[0]] || '').trim(),
+          postal: (row[keys[1]] || '').trim(),
+          address: (row[keys[2]] || '').trim(),
+          selected: true
+        };
+      }).filter(r => r.name && r.address);
+      renderTable();
+      renderLetterTable();
+      document.getElementById('dropzone').innerHTML = `<div class="icon">✅</div><p>${file.name}（${csvData.length}件）読み込み完了</p><p class="hint">別のファイルをドロップして再読み込みできます</p>`;
+    }
+  });
+}
+
+// ═══════════════════════════════════════
+// TABLE RENDERING (Labels tab)
+// ═══════════════════════════════════════
+function renderTable(filter = '') {
+  const tbody = document.getElementById('data-tbody');
+  const card = document.getElementById('data-card');
+  card.style.display = 'block';
+
+  const fl = filter.toLowerCase();
+  let html = '';
+  csvData.forEach((r, i) => {
+    if (fl && !r.name.toLowerCase().includes(fl) && !r.address.toLowerCase().includes(fl)) return;
+    html += `<tr>
+      <td><input type="checkbox" class="cb cb-row" data-id="${r.id}" ${r.selected ? 'checked' : ''} onchange="toggleRow(${r.id})"></td>
+      <td style="color:#999">${i + 1}</td>
+      <td>${esc(r.name)}</td>
+      <td>${esc(r.postal)}</td>
+      <td>${esc(r.address)}</td>
+    </tr>`;
+  });
+  tbody.innerHTML = html;
+  updateCount();
+}
+
+function setupSearch() {
+  document.getElementById('search-input').addEventListener('input', e => renderTable(e.target.value));
+}
+
+function setupCbAll() {
+  document.getElementById('cb-all').addEventListener('change', e => {
+    csvData.forEach(r => r.selected = e.target.checked);
+    renderTable(document.getElementById('search-input').value);
+    renderLetterTable();
+  });
+  document.getElementById('cb-all-letters').addEventListener('change', e => {
+    csvData.forEach(r => r.selected = e.target.checked);
+    manualEntries.forEach(r => r.selected = e.target.checked);
+    renderLetterTable();
+    renderTable(document.getElementById('search-input').value);
+  });
+}
+
+function toggleRow(id) {
+  const r = csvData.find(x => x.id === id) || manualEntries.find(x => x.id === id);
+  if (r) r.selected = !r.selected;
+  updateCount();
+  updateLetterCount();
+}
+function selectAll() { csvData.forEach(r => r.selected = true); renderTable(document.getElementById('search-input').value); renderLetterTable(); }
+function deselectAll() { csvData.forEach(r => r.selected = false); renderTable(document.getElementById('search-input').value); renderLetterTable(); }
+function updateCount() {
+  document.getElementById('selected-count').textContent = csvData.filter(r => r.selected).length;
+  document.getElementById('total-count').textContent = csvData.length;
+}
+
+// ═══════════════════════════════════════
+// TABLE RENDERING (Letters tab)
+// ═══════════════════════════════════════
+function renderLetterTable() {
+  const allData = [...csvData, ...manualEntries];
+  if (allData.length === 0) {
+    document.getElementById('letter-no-data').style.display = 'block';
+    document.getElementById('letter-data').style.display = 'none';
+    return;
+  }
+  document.getElementById('letter-no-data').style.display = 'none';
+  document.getElementById('letter-data').style.display = 'block';
+
+  const tbody = document.getElementById('letter-tbody');
+  let html = '';
+  allData.forEach((r, i) => {
+    const isManual = r.id >= 10000;
+    html += `<tr>
+      <td><input type="checkbox" class="cb" data-id="${r.id}" ${r.selected ? 'checked' : ''} onchange="toggleRow(${r.id})"></td>
+      <td>${esc(r.name)} ${isManual ? '<span class="badge">手入力</span>' : ''}</td>
+      <td>${esc(r.postal)}</td>
+      <td>${esc(r.address)}</td>
+    </tr>`;
+  });
+  tbody.innerHTML = html;
+  updateLetterCount();
+}
+
+function selectAllLetters() {
+  csvData.forEach(r => r.selected = true);
+  manualEntries.forEach(r => r.selected = true);
+  renderLetterTable();
+  renderTable(document.getElementById('search-input').value);
+}
+function deselectAllLetters() {
+  csvData.forEach(r => r.selected = false);
+  manualEntries.forEach(r => r.selected = false);
+  renderLetterTable();
+  renderTable(document.getElementById('search-input').value);
+}
+function updateLetterCount() {
+  const all = [...csvData, ...manualEntries];
+  document.getElementById('letter-selected-count').textContent = all.filter(r => r.selected).length;
+}
+
+// ── Manual Entry ──
+let manualIdCounter = 10000;
+function addManualEntry() {
+  const name = document.getElementById('manual-name').value.trim();
+  const postal = document.getElementById('manual-postal').value.trim();
+  const addr = document.getElementById('manual-addr').value.trim();
+  if (!name) return alert('団体名を入力してください');
+  manualEntries.push({ id: manualIdCounter++, name, postal, address: addr, selected: true });
+  document.getElementById('manual-name').value = '';
+  document.getElementById('manual-postal').value = '';
+  document.getElementById('manual-addr').value = '';
+  renderLetterTable();
+}
+
+// ═══════════════════════════════════════
+// CUSTOMER TYPE TOGGLE
+// ═══════════════════════════════════════
+function setCustomerType(type) {
+  customerType = type;
+  document.querySelectorAll('.toggle-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.type === type);
+  });
+  const g = document.getElementById('greeting-text');
+  if (type === 'repeater') {
+    g.value = 'いつもキープオンショップをご利用いただき、ありがとうございます！';
+  } else {
+    g.value = 'この度はキープオンショップにご興味をお持ちいただき、誠にありがとうございます。';
+  }
+}
+
+// ═══════════════════════════════════════
+// SENDER SETTINGS
+// ═══════════════════════════════════════
+function getSender() {
+  return {
+    company: document.getElementById('sender-company').value,
+    shop: document.getElementById('sender-shop').value,
+    postal: document.getElementById('sender-postal').value,
+    addr: document.getElementById('sender-addr').value,
+    tel: document.getElementById('sender-tel').value,
+    person: document.getElementById('sender-person').value,
+  };
+}
+function saveSender() {
+  try { localStorage.setItem('keepon_dm_sender', JSON.stringify(getSender())); } catch(e) {}
+}
+function loadSender() {
+  try {
+    const s = JSON.parse(localStorage.getItem('keepon_dm_sender'));
+    if (!s) return;
+    document.getElementById('sender-company').value = s.company || '';
+    document.getElementById('sender-shop').value = s.shop || '';
+    document.getElementById('sender-postal').value = s.postal || '';
+    document.getElementById('sender-addr').value = s.addr || '';
+    document.getElementById('sender-tel').value = s.tel || '';
+    document.getElementById('sender-person').value = s.person || '';
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════════
+// PRINT LABELS (① 宛名ラベル)
+// ═══════════════════════════════════════
+function printLabels() {
+  const selected = csvData.filter(r => r.selected);
+  if (selected.length === 0) return alert('宛先を1件以上選択してください。');
+
+  const s = getSender();
+  const senderLine = `${s.company}　〒${s.postal}　${s.addr}`;
+
+  // 8 labels per page
+  const pages = [];
+  for (let i = 0; i < selected.length; i += 8) {
+    pages.push(selected.slice(i, i + 8));
+  }
+
+  let labelsHtml = '';
+  pages.forEach((page, pi) => {
+    labelsHtml += `<div class="label-page${pi > 0 ? ' page-break' : ''}">`;
+    for (let row = 0; row < 4; row++) {
+      labelsHtml += '<div class="label-row">';
+      for (let col = 0; col < 2; col++) {
+        const idx = row * 2 + col;
+        const r = page[idx];
+        if (r) {
+          labelsHtml += `
+          <div class="label">
+            <div class="label-postal">〒${esc(r.postal)}</div>
+            <div class="label-addr">${esc(r.address)}</div>
+            <div class="label-name">${esc(r.name)}　御中</div>
+            <div class="label-sender">${esc(s.company)}<br>〒${esc(s.postal)} ${esc(s.addr)}<br>TEL: ${esc(s.tel)}　担当: ${esc(s.person)}</div>
+          </div>`;
+        } else {
+          labelsHtml += '<div class="label label-empty"></div>';
+        }
+      }
+      labelsHtml += '</div>';
+    }
+    labelsHtml += '</div>';
+  });
+
+  const printHtml = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">
+<style>
+  @page { size: A4; margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif; }
+  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+
+  .label-page { width: 210mm; height: 297mm; padding: 0 10mm; display: flex; flex-direction: column; justify-content: space-between; }
+  .label-row { display: flex; gap: 6mm; }
+  .label {
+    width: 92mm; height: 66mm;
+    padding: 6mm 7mm 18mm 7mm; position: relative; display: flex; flex-direction: column;
+  }
+  .label-empty { }
+  .label-postal { font-size: 9pt; color: #555; margin-bottom: 2mm; }
+  .label-addr { font-size: 9.5pt; line-height: 1.6; color: #333; flex-grow: 0; }
+  .label-name { font-size: 13pt; font-weight: 700; color: #222; margin-top: auto; margin-bottom: auto; text-align: center; }
+  .label-sender { position: absolute; bottom: 3mm; right: 4mm; font-size: 5.5pt; color: #999; text-align: right; line-height: 1.5; }
+
+  .page-break { page-break-before: always; }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+</head><body>${labelsHtml}</body></html>`;
+
+  openPrintWindow(printHtml);
+}
+
+// ═══════════════════════════════════════
+// PRINT LETTERS (② 送付状)
+// ═══════════════════════════════════════
+async function printLetters() {
+  const allData = [...csvData, ...manualEntries];
+  const selected = allData.filter(r => r.selected);
+  if (selected.length === 0) return alert('宛先を1件以上選択してください。');
+
+  const s = getSender();
+  const itemName = document.getElementById('item-name').value || '○○';
+  const title = document.getElementById('letter-title').value;
+  const greeting = document.getElementById('greeting-text').value;
+  const freeText = document.getElementById('free-text').value;
+  const lineUrl = document.getElementById('qr-line-url').value;
+  const lineText = document.getElementById('qr-line-text').value;
+  const shopUrl = document.getElementById('qr-shop-url').value;
+  const shopLabel = document.getElementById('qr-shop-label').value;
+  const noteText = document.getElementById('letter-note').value;
+
+  // Generate QR codes as data URLs
+  let lineQR = '', shopQR = '';
+  try {
+    if (lineUrl) lineQR = await QRCode.toDataURL(lineUrl, { width: 200, margin: 1 });
+    if (shopUrl) shopQR = await QRCode.toDataURL(shopUrl, { width: 200, margin: 1 });
+  } catch(e) { console.warn('QR generation error', e); }
+
+  // Free text → paragraphs
+  const freeHtml = freeText.split('\n').map(line => {
+    if (line.trim() === '') return '<br>';
+    return `<p>${esc(line)}</p>`;
+  }).join('');
+
+  let pagesHtml = '';
+  selected.forEach((r, i) => {
+    const sendLine = `${esc(r.name)}に、${esc(itemName)}を送付させていただきます。`;
+    pagesHtml += `
+    <div class="letter-page${i > 0 ? ' page-break' : ''}">
+      <!-- 宛名 -->
+      <div class="recipient">
+        <div class="recipient-postal">〒${esc(r.postal)}</div>
+        <div class="recipient-addr">${esc(r.address)}</div>
+        <div class="recipient-name">${esc(r.name)}　御中</div>
+      </div>
+
+      <!-- タイトル -->
+      <h1 class="letter-title">${esc(title)}</h1>
+
+      <!-- 本文 -->
+      <div class="letter-body">
+        <p>${esc(greeting)}</p>
+        <p>${sendLine}</p>
+        <div class="free-text">${freeHtml}</div>
+      </div>
+
+      <!-- LINE QR -->
+      ${lineQR ? `
+      <div class="qr-line-section">
+        <img src="${lineQR}" class="qr-img-line" alt="LINE QR">
+        <p class="qr-line-caption">${esc(lineText)}</p>
+      </div>` : ''}
+
+      <!-- 注釈 -->
+      ${noteText ? `<p class="letter-note-text">${esc(noteText)}</p>` : ''}
+
+      <!-- ショップQR + 差出人 -->
+      <div class="footer-section">
+        <div class="footer-left">
+          ${shopQR ? `<p class="shop-label">${esc(shopLabel)}</p><img src="${shopQR}" class="qr-img-shop" alt="Shop QR">` : ''}
+        </div>
+        <div class="footer-right">
+          <p class="footer-company">${esc(s.company)}</p>
+          <p>〒${esc(s.postal)}　${esc(s.addr)}</p>
+          <p>電話番号：${esc(s.tel)}</p>
+          <p>担当：${esc(s.person)}</p>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  const printHtml = `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  @page { size: A4; margin: 0; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Noto Sans JP', sans-serif; color: #444; }
+  @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+
+  .letter-page {
+    width: 210mm; height: 297mm;
+    padding: 18mm 22mm 15mm 22mm;
+    display: flex; flex-direction: column; position: relative;
+  }
+  .page-break { page-break-before: always; }
+
+  /* 宛名 */
+  .recipient { margin-bottom: 10mm; }
+  .recipient-postal { font-size: 9pt; color: #666; }
+  .recipient-addr { font-size: 10pt; margin-top: 1mm; }
+  .recipient-name { font-size: 13pt; font-weight: 700; margin-top: 2mm; }
+
+  /* タイトル */
+  .letter-title {
+    text-align: center; font-size: 16pt; font-weight: 700;
+    color: #6b7c3e; margin: 6mm 0 8mm 0; letter-spacing: 0.15em;
+  }
+
+  /* 本文 */
+  .letter-body { font-size: 10pt; line-height: 2; }
+  .letter-body p { margin-bottom: 1mm; }
+  .free-text { margin-top: 4mm; }
+  .free-text p { margin-bottom: 0.5mm; }
+
+  /* LINE QR */
+  .qr-line-section {
+    margin-top: 6mm; display: flex; align-items: center; gap: 4mm;
+    border: 1px solid #b5cc8e; border-radius: 3mm; padding: 4mm 6mm;
+    background: #f6faf0;
+  }
+  .qr-img-line { width: 22mm; height: 22mm; }
+  .qr-line-caption { font-size: 9pt; color: #555; }
+
+  /* 注釈 */
+  .letter-note-text { font-size: 8pt; color: #888; margin-top: 5mm; text-align: center; }
+
+  /* フッター */
+  .footer-section {
+    margin-top: auto; display: flex; align-items: flex-end; justify-content: space-between;
+    padding-top: 6mm; border-top: 0.5pt solid #ddd;
+  }
+  .footer-left { text-align: center; }
+  .shop-label { font-size: 8pt; color: #555; margin-bottom: 1mm; }
+  .qr-img-shop { width: 24mm; height: 24mm; }
+  .footer-right { text-align: right; font-size: 9pt; line-height: 1.8; color: #555; }
+  .footer-company { font-size: 11pt; font-weight: 700; color: #333; }
+</style>
+</head><body>${pagesHtml}</body></html>`;
+
+  openPrintWindow(printHtml);
+}
+
+// ═══════════════════════════════════════
+// PRINT WINDOW
+// ═══════════════════════════════════════
+function openPrintWindow(html) {
+  const win = window.open('', '_blank');
+  if (!win) {
+    alert('ポップアップがブロックされました。ブラウザの設定でポップアップを許可してください。');
+    return;
+  }
+  win.document.write(html);
+  win.document.close();
+  // Wait for fonts to load
+  setTimeout(() => { win.print(); }, 1200);
+}
+
+// ═══════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════
+function esc(s) {
+  if (!s) return '';
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
