@@ -224,13 +224,13 @@
     <div class="form-row">
       <div class="form-group">
         <label>LINE URL（左側QR）</label>
-        <input type="text" id="qr-line-url" placeholder="https://line.me/..." value="https://lin.ee/example">
+        <input type="text" id="qr-line-url" placeholder="https://line.me/..." value="https://lin.ee/u8HJvZj">
         <p class="note">LINEのQRコード下に表示するテキスト</p>
         <input type="text" id="qr-line-text" value="LINEにスムーズにご相談いただけますので、ぜひご活用ください！" style="margin-top:4px;">
       </div>
       <div class="form-group">
         <label>ショップ URL（右側QR）</label>
-        <input type="text" id="qr-shop-url" placeholder="https://keepon.shop/..." value="https://keeponshop.com">
+        <input type="text" id="qr-shop-url" placeholder="https://keepon.shop/..." value="https://keepon-web.com/">
         <p class="note">QRコードの横に表示するラベル</p>
         <input type="text" id="qr-shop-label" value="キープオンショップ" style="margin-top:4px;">
       </div>
@@ -512,7 +512,7 @@ function setCustomerType(type) {
   if (type === 'repeater') {
     g.value = 'いつもキープオンショップをご利用いただき、ありがとうございます！';
   } else {
-    g.value = 'この度はキープオンショップにご興味をお持ちいただき、誠にありがとうございます。';
+    g.value = 'お世話になります。名入れ/オリジナル商品を取り扱っております「キープオンショップ」と申します。';
   }
 }
 
@@ -647,7 +647,7 @@ async function printLetters() {
 
   let pagesHtml = '';
   selected.forEach((r, i) => {
-    const sendLine = `${esc(r.name)}に、${esc(itemName)}を送付させていただきます。`;
+    const sendLine = `${esc(r.name)}様に、${esc(itemName)}を送付させていただきます。`;
     pagesHtml += `
     <div class="letter-page${i > 0 ? ' page-break' : ''}">
       <!-- 宛名 -->
